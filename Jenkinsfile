@@ -3,7 +3,6 @@ pipeline {
 
     tools {
         maven 'maven'      // Your Maven name in Jenkins
-        jdk 'JDK-17'       // Add if needed
     }
 
     environment {
