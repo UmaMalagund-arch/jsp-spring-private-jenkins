@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven'
+        maven 'maven'      // Your Maven name in Jenkins
+        jdk 'JDK-17'       // Add if needed
     }
 
     environment {
@@ -31,9 +32,9 @@ pipeline {
                 sh "mvn clean package -DskipTests"
             }
             post {
-                success { echo "Build success" }
+                success { echo "Build successful" }
                 failure { echo "Build failed" }
-                always { echo "Maven Build stage completed" }
+                always  { echo "Maven Build completed" }
             }
         }
 
@@ -41,21 +42,21 @@ pipeline {
             steps {
                 script {
                     BUILD_JAR = sh(
-                        script: "ls target/*.jar | head -n 1",
+                        script: "ls target/*.jar | grep -v 'original' | head -n 1",
                         returnStdout: true
                     ).trim()
 
                     if (!BUILD_JAR) {
-                        error("❌ No JAR file found in target/")
+                        error("❌ No JAR file found in target/ directory")
                     }
 
-                    echo "Detected JAR: ${BUILD_JAR}"
+                    echo "Detected JAR File: ${BUILD_JAR}"
                 }
             }
             post {
-                success { echo "Detected JAR file successfully" }
-                failure { echo "Failed to detect JAR file" }
-                always { echo "Jar detection stage completed" }
+                success { echo "JAR detection successful" }
+                failure { echo "JAR detection failed" }
+                always  { echo "JAR detection stage completed" }
             }
         }
 
@@ -63,46 +64,41 @@ pipeline {
             steps {
                 script {
 
-                    echo "Checking if application is already running..."
+                    echo "Checking for existing running application..."
 
                     def pid = sh(
-                        script: "pgrep -f ${BUILD_JAR} || true",
+                        script: "pgrep -f app.jar || true",
                         returnStdout: true
                     ).trim()
 
                     if (pid) {
-                        echo "JAR running with PID ${pid}. Stopping..."
+                        echo "⚠ Old application running with PID ${pid}. Stopping..."
                         sh "kill -9 ${pid}"
                     } else {
                         echo "No running instance found."
                     }
 
-                    // Remove old jar if present
-                    sh """
-                    if [ -f app.jar ]; then
-                        echo "Removing old app.jar"
-                        rm -f app.jar
-                    fi
-                    """
+                    echo "Removing old app.jar (if exists)"
+                    sh "rm -f app.jar"
 
                     echo "Copying new JAR to app.jar"
                     sh "cp ${BUILD_JAR} app.jar"
 
-                    echo "Starting application..."
-                    sh "nohup java -jar app.jar > app.log 2>&1 &"
+                    echo "Starting Spring Boot on port 8088..."
+                    sh "nohup java -jar app.jar --server.port=8088 > app.log 2>&1 &"
                 }
             }
             post {
                 success { echo "Application started successfully" }
-                failure { echo "Error running the jar file" }
-                always { echo "Run-JAR stage completed" }
+                failure { echo "Application failed to start" }
+                always  { echo "Run JAR stage completed" }
             }
         }
     }
 
     post {
-        success { echo "Pipeline completed successfully!" }
-        failure { echo "Pipeline failed!" }
-        always  { echo "Pipeline ended." }
+        success { echo "🎉 Pipeline completed successfully!" }
+        failure { echo "❌ Pipeline failed!" }
+        always  { echo "🏁 Pipeline ended." }
     }
 }
